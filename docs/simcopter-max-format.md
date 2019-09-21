@@ -2,8 +2,7 @@
 
 ## Introduction
 
-Geometry data for models (buildings, helicopters, ground objects, etc) appears to be stored in the three sim3d?.max files.  Rough guess at a file format follows.
-
+Geometry data for models (buildings, helicopters, ground objects, etc.) is stored in the three sim3d#.max files. Rough guess at a file format follows.
 
 ## Details
 
@@ -37,16 +36,16 @@ Header:
 	int32: offset to start of model data
 
 	(geom name table)
-		17 bytes: null-terminated geom name
-		int32: offset into mesh table
-		int32: Flags?  1 = object, 143 = filename (sim3d1, etc)
-		int32: always 0
-		int32: Number of VERTICES
-		int32: always 0
-		int32: always 0
-		int32: Number of FACES
-		int32: ?? Possibly something to do with Texturing?
-		int32: Always 0
+		17 bytes: Null-terminated name. Bytes following the null character are junk.
+		int32: Offset into mesh table.
+		int32: Flags? 1 = object, other values indicate that the name field contains the filename (for SimCopter: 143 for sim3d1, 144 for sim3d2, 113 for sim3d3; for Streets of SimCity: 184 for sim3d1, 216 for sim3d2, 131 for sim3d3).
+		int32: Always 0.
+		int32: Number of "rendered" vertices, counting shared vertices once for every face that uses them (examples below) and not counting the origin vertex.
+		int32: Always 0.
+		int32: Always 0.
+		int32: Number of faces.
+		int32: Number of unique vertices, including the origin vertex. This is the number of vertices stored in the corresponding object block.
+		int32: Always 0.
 
 	Duplicate GEOM table follows.
 		9xint32 in a row, just copies of the int32 set above, except without Flags and with a prepended ID
@@ -65,11 +64,11 @@ Header:
 	12 bytes:  JUNK.  This is where the bug comes in, above: somebody at Maxis calculated sizeof(Name) wrong.
 
 	Vertex table (immediately follows the OBJX header)
-		NumberOfVertices * [x: int32, y: int32, z: int32]: Vertex array.  X, Y, Z coords, as signed int32 one after another.  First vertex in the list is the Origin.
+		UniqueVertexCount * [x: int32, y: int32, z: int32]: Vertex array.  X, Y, Z coords, as signed int32 one after another.  First vertex in the list is the Origin.
 
 	'FACE': A face (immediately follows the Vertex table)
 		int32: size, incl. header
-		int16: num vertices
+		int16: Number of vertices. 1 for single vertices (e.g., flashing lights), 2 for edges (e.g., lane markings on roads), 3+ for polygons.
 		int16: flags?
 		int16: is_light
 		int32: face_group
@@ -79,3 +78,26 @@ Header:
 		vertices * int16: Reference into Vertex table, above
 		vertices * [4 * int16]: face vertex flags. 4 shorts per vertex in a face. Something to do with texture coordinates?
 ```
+
+### Rendered Vertices vs. Unique Vertices
+
+The GEOM table contains two values for the number of vertices:
+* The first value counts shared vertices once for every face that uses them and doesn't include the origin vertex.
+  * For example, six vertices used to form two quads sharing one edge will count as eight.
+  * Including this value with the mesh data (rather than computing it at runtime) may have permitted a rendering optimization. It's not clear if these meshes include smoothing groups (gradients are used when rendering some faces), but if they do, this value could be related to whether or not connected faces are in the same group.
+* The second value counts only unique vertices and includes the origin.
+  * This is the number of vertices stored in the corresponding object block.
+
+Some examples:
+
+**Mesh RL44 from SimCopter sim3d2.max**
+
+![Mesh RL44 from SimCopter's sim3d2.max file.](images/simcopter_sim3d2_rl44.png)
+* Number of rendered vertices: 84 = (4 railroad ties * 5 quads per tie (no bottom face) * 4 vertices per quad) + (2 rails * 2 vertices per edge)
+* Number of unique vertices: 37 = (4 railroad ties * 8 vertices per tie) + (2 rails * 2 vertices per edge) + 1 origin vertex
+
+**Mesh RL50 from SimCopter sim3d2.max**
+
+![Mesh RL50 from SimCopter's sim3d2.max file.](images/simcopter_sim3d2_rl50.png)
+* Number of rendered vertices: 44 = (2 railroad ties * 5 quads per tie (no bottom face) * 4 vertices per quad) + (2 rails * 2 vertices per edge)
+* Number of unique vertices: 21 = (2 railroad ties * 8 vertices per tie) + (2 rails * 2 vertices per edge) + 1 origin vertex
