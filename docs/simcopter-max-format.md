@@ -28,17 +28,17 @@ Header:
 		int32: (offset 57): pointer to palette start, in file (or DIRC), typically 61
 		768 bytes: palette data, RGB, 3x256 with 8 bytes per component (24bits per entry)
 
-'GEOM': geometry data start (typically offsett 829)
-	int32: size of geom block, incl. first 8 bytes
-	int32: num subblocks
-	int32: num geom units (subblocks - 1)
-	int32: offset to start of name table
-	int32: offset to start of model data
+'GEOM': geometry data start (typically at offset 829)
+	int32: Size of geometry block (includes first 8 bytes containing "GEOM" and size).
+	int32: Number of entries in geometry table (N).
+	int32: Number of entries in duplicate geometry table (N-1).
+	int32: Offset to start of name table (from beginning of file; 853).
+	int32: Offset to start of duplicate name table (from beginning of file; 853 + N*53).
 
-	(geom name table)
-		17 bytes: Null-terminated name. Bytes following the null character are junk.
-		int32: Offset into mesh table.
-		int32: Flags? 1 = object, other values indicate that the name field contains the filename (for SimCopter: 143 for sim3d1, 144 for sim3d2, 113 for sim3d3; for Streets of SimCity: 184 for sim3d1, 216 for sim3d2, 131 for sim3d3).
+	Geometry name table (each entry is 53 bytes long):
+		17 bytes: Null-terminated name. First entry contains file name (sim3d#). Bytes following the null character are junk.
+		int32: Offset into object table (from beginning of file).
+		int32: Object count. For first entry in table, number of objects in file. Otherwise 1.
 		int32: Always 0.
 		int32: Number of "rendered" vertices, counting shared vertices once for every face that uses them (examples below) and not counting the origin vertex.
 		int32: Always 0.
@@ -47,10 +47,10 @@ Header:
 		int32: Number of unique vertices, including the origin vertex. This is the number of vertices stored in the corresponding object block.
 		int32: Always 0.
 
-	Duplicate GEOM table follows.
-		9xint32 in a row, just copies of the int32 set above, except without Flags and with a prepended ID
+	Duplicate geometry name table (each entry is 36 bytes long):
+		9 x int32 in a row, just copies of the int32 set above, except without object count and with a prepended ID. One fewer entry than the previous table (first entry with filename is omitted).
 
-	(geom object table)
+	Object table:
 		Offsets are stored in the first int32 in the name table
 
 'OBJX': marks an Object.  Items in the Names table point here.
@@ -78,6 +78,10 @@ Header:
 		vertices * int16: Reference into Vertex table, above
 		vertices * [4 * int16]: face vertex flags. 4 shorts per vertex in a face. Something to do with texture coordinates?
 ```
+
+### General Notes
+
+* The entries in the geometry name table and duplicate geometry name table aren't used by SimCopter, with the exception of the first entry in the geometry name table (the metadata entry containing the file name and total number of objects, vertices, and faces). This was determined by replacing all the bytes in these tables with zeroes (except for those of the metadata entry), which had no effect when running the game.
 
 ### Rendered Vertices vs. Unique Vertices
 
