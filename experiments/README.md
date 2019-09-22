@@ -23,7 +23,7 @@ To use a modified `.max` file, rename it to match the name of the original file 
   * All bytes in the geometry name table and the duplicate geometry name table (i.e., bytes 853 to 13721, inclusive) set to zero.
   * Color of face 7 of the bambi bucket mesh (bytes at 217720 and 217725) set to 96 (0x60). Easy way to check if the game is using the modified file (top of bambi bucket is red instead of green).
 * Effect:
-  * Game crashes when loading a city. Error message: "Unable to load resources"
+  * Game crashes when loading a city. Error message: "Unable to load resources".
 
 ### `sim3d2_simcopter_zero_test_2.max`
 
@@ -36,6 +36,30 @@ To use a modified `.max` file, rename it to match the name of the original file 
   * The game runs normally. See *Notes*, below.
   * Top face of the bambi bucket is red instead of green.
 
+### `sim3d2_simcopter_replacement_test_1.max`
+
+Objective: replace the bambi bucket (ID: 123) with the police car (ID: 285). The ID numbers come from the duplicate geometry name table (see `geom-table-printer.py` in the `tools` directory of this repo).
+
+* Game: SimCopter
+* Original file: `sim3d2.max`
+* Changes:
+  * Replaced object block for the bambi bucket (stored at offset 216595) with a copy of the object block for the police car (stored at offset 316523).
+    * Changed the unknown value (stored at offset 216611, between the two always-zero values) from that of the police car (0x00135B10) to that of the bucket (0x0003E422).
+    * Changed the name (stored at 216619) from that of the police car to that of the bucket.
+    * Changed the unknown 12 bytes (stored at offset 216707) from that of the police car to that of the bucket.
+      * **This is required:** if all the other changes are made but this one is not, the game crashes when loading a city (error message: "ERROR: unable to get object 123").
+  * Since the object block replacement changed the face size and number of other attributes, additional changes were required.
+    * File size (stored at offset 4) changed to 0x000942F7.
+    * Size of geometry block (stored at offset 833) changed to 0x00093FBA.
+    * Modifications to first entry of geometry name table (metadata):
+      * Total number of rendered vertices (stored at offset 882) changed to 29080 = 0x00007198.
+      * Total number of faces (stored at offset 894) changed to 8481 = 0x00002121.
+      * Total number of unique vertices (stored at offset 898) changed to 8874 = 0x000022AA.
+  * All bytes in the geometry name table and the duplicate geometry name table **except** those for the first entry in the name table (i.e., bytes 906 to 13721, inclusive) set to zero (as in `sim3d2_simcopter_zero_test_2.max`; see above).
+* Effect:
+  * The bambi bucket is replaced by the police car. Pretty entertaining.
+
 ## Notes
 
 * SimCopter appears to use only the first entry in the geometry name table and none of the entries in the duplicate geometry name table (demonstrated by `sim3d2_simcopter_zero_test_1.max` and `sim3d2_simcopter_zero_test_2.max`). The first entry contains metadata rather than details about a specific mesh: it specifies the start of the object block, the number of objects, and the total number of vertices and faces.
+* Based on `sim3d2_simcopter_replacement_test_1.max`, the unknown 12 bytes (following the 88-byte name field) in each object block are used by SimCopter when loading an object. Presumably their value is linked to the object IDs since the error message displayed when these 12 bytes are not set correctly refers to the ID.

@@ -61,7 +61,7 @@ Header:
 	int32: ???? maybe a scale factor, a unique ID or a CRC or something
 	int32: always 0
 	88 bytes: null-terminated, null-padded object name
-	12 bytes:  JUNK.  This is where the bug comes in, above: somebody at Maxis calculated sizeof(Name) wrong.
+	12 bytes: Unknown. Related to how objects are loaded. Must match the expected ID of the object (how this match works is unknown: see `sim3d2_simcopter_replacement_test_1.max` in the `experiments` folder's README).
 
 	Vertex table (immediately follows the OBJX header)
 		UniqueVertexCount * [x: int32, y: int32, z: int32]: Vertex array.  X, Y, Z coords, as signed int32 one after another.  First vertex in the list is the Origin.
